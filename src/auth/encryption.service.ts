@@ -4,11 +4,11 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class EncryptionService {
-  private readonly algorithm = 'aes-256';
+  private readonly algorithm = 'aes256';
 
   constructor(private readonly configService: ConfigService) {}
 
-  encrypt(data: string) {
+  encrypt(data: string): string {
     const iv = crypto.randomBytes(16);
     const cipher = crypto.createCipheriv(
       this.algorithm,
@@ -26,7 +26,7 @@ export class EncryptionService {
     return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
   }
 
-  decrypt(data: string) {
+  decrypt(data: string): string {
     const textParts = data.split(':');
     const iv = Buffer.from(textParts.shift(), 'hex');
     const encryptedText = Buffer.from(textParts.join(':'), 'hex');

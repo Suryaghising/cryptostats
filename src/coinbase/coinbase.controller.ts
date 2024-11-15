@@ -1,31 +1,33 @@
 import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
-import { JwtGuard } from '../auth/guards/jwt.guard';
 import { Request, Response } from 'express';
+import { CurrentUser } from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UserResponse } from '../users/dto/response/user-response.dto';
 import { CoinbaseAuthService } from './coinbase-auth.service';
-import { CurrentUser } from 'src/auth/current-user.decorator';
-import { UserResponse } from 'src/users/dtos/response/user-response.dto';
 import { CoinbaseService } from './coinbase.service';
 
 @Controller('coinbase')
 export class CoinbaseController {
-
-  constructor(private readonly coinbaseAuthService: CoinbaseAuthService, private readonly coinbaseService: CoinbaseService) {}
+  constructor(
+    private readonly coinbaseAuthService: CoinbaseAuthService,
+    private readonly coinbaseService: CoinbaseService,
+  ) {}
 
   @Get('auth')
-  @UseGuards(JwtGuard)
-  authorize(@Res() response: Response) {
+  @UseGuards(JwtAuthGuard)
+  authorize(@Res() response: Response): void {
     this.coinbaseAuthService.authorize(response);
   }
 
   @Get('auth/callback')
-    @UseGuards(JwtGuard)
-    handleCallback(@Req() request: Request, @Res() response: Response) {
-        this.coinbaseAuthService.handleCallback(request, response);
-    }
+  @UseGuards(JwtAuthGuard)
+  handleCallback(@Req() request: Request, @Res() response: Response): void {
+    this.coinbaseAuthService.handleCallback(request, response);
+  }
 
-    @Get()
-    @UseGuards(JwtGuard)
-    getCoinbaseData(@CurrentUser() user: UserResponse) {
-      return this.coinbaseService.getPrimaryAccountTransactions(user._id);
-    }
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  getCoinbaseData(@CurrentUser() user: UserResponse): Promise<any> {
+    return this.coinbaseService.getPrimaryAccountTransactions(user._id);
+  }
 }

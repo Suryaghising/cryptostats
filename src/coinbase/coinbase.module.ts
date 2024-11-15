@@ -1,15 +1,14 @@
-import { Module } from '@nestjs/common';
-import { CoinbaseController } from './coinbase.controller';
-import { CoinbaseAuthService } from './coinbase-auth.service';
 import { HttpModule } from '@nestjs/axios';
-import { UsersModule } from 'src/users/users.module';
-import { AuthModule } from 'src/auth/auth.module';
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { UsersModule } from '../users/users.module';
+import { CoinbaseAuthService } from './coinbase-auth.service';
+import { CoinbaseController } from './coinbase.controller';
 import { CoinbaseService } from './coinbase.service';
 
 @Module({
-  imports: [HttpModule, UsersModule, AuthModule],
+  imports: [HttpModule, AuthModule, UsersModule],
   controllers: [CoinbaseController],
   providers: [CoinbaseAuthService, CoinbaseService],
-  exports: [HttpModule]
 })
 export class CoinbaseModule {}

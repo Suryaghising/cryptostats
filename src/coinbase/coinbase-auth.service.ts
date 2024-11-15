@@ -3,10 +3,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { lastValueFrom } from 'rxjs';
-import { EncryptionService } from 'src/auth/encryption.service';
-import { UserResponse } from 'src/users/dtos/response/user-response.dto';
-import { CoinbaseAuth } from 'src/users/models/CoinbaseAuth';
-import { UsersService } from 'src/users/users.service';
+import { EncryptionService } from '../auth/encryption.service';
+import { UserResponse } from '../users/dto/response/user-response.dto';
+import { CoinbaseAuth } from '../users/models/CoinbaseAuth';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class CoinbaseAuthService {
@@ -17,13 +17,13 @@ export class CoinbaseAuthService {
     private readonly encryptionService: EncryptionService,
   ) {}
 
-  public authorize(res: Response) {
+  public authorize(res: Response): void {
     res.redirect(this.buildAuthorizeUrl().href);
     return;
   }
 
   private buildAuthorizeUrl() {
-    const authorizeUrl = new URL('https://www.coinbase.com/oauth/authorize');
+    const authorizeUrl = new URL('https://coinbase.com/oauth/authorize');
     authorizeUrl.searchParams.append('response_type', 'code');
     authorizeUrl.searchParams.append(
       'client_id',
@@ -37,15 +37,17 @@ export class CoinbaseAuthService {
       'scope',
       'wallet:transactions:read,wallet:accounts:read',
     );
-
     return authorizeUrl;
   }
 
-  public handleCallback(req: Request, res: Response) {
+  public handleCallback(req: Request, res: Response): void {
     const { code } = req.query;
     const { user } = req;
-    this.getTokensFromCode(code as string).subscribe(async(response) => {
-      await this.updateUserCoinbaseAuth(response.data, ((user as unknown) as UserResponse)._id);
+    this.getTokensFromCode(code as string).subscribe(async tokensResponse => {
+      await this.updateUserCoinbaseAuth(
+        tokensResponse.data,
+        ((user as unknown) as UserResponse)._id,
+      );
       res.redirect(this.configService.get('AUTH_REDIRECT_URI'));
     });
   }
@@ -77,10 +79,10 @@ export class CoinbaseAuthService {
     });
   }
 
-  async getAccessToken(userId: string) {
+  async getAccessToken(userId: string): Promise<string> {
     const coinbaseAuth = await this.usersService.getCoinbaseAuth(userId);
     if (new Date().getTime() >= coinbaseAuth.expires.getTime()) {
-      const response$ = await this.refreshToken(coinbaseAuth);
+      const response$ = this.refreshAccessToken(coinbaseAuth);
       const response = await lastValueFrom(response$);
       await this.updateUserCoinbaseAuth(response.data, userId);
       return response.data.access_token;
@@ -88,9 +90,8 @@ export class CoinbaseAuthService {
     return this.encryptionService.decrypt(coinbaseAuth.accessToken);
   }
 
-
-  private refreshToken(coinbaseAuth: CoinbaseAuth) {
-    return this.httpService.post('https://api.coinbase.com/oauth/token', {
+  private refreshAccessToken(coinbaseAuth: CoinbaseAuth) {
+    return this.httpService.post('https://www.coinbase.com/oauth/token', {
       grant_type: 'refresh_token',
       refresh_token: this.encryptionService.decrypt(coinbaseAuth.refreshToken),
       client_id: this.configService.get('COINBASE_CLIENT_ID'),

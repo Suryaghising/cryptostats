@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { request } from 'http';
-import { ExtractJwt } from 'passport-jwt';
-import { Strategy } from 'passport-local';
-import { UsersService } from 'src/users/users.service';
+import { Request } from 'express';
+import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UserResponse } from '../../users/dto/response/user-response.dto';
+import { UsersService } from '../../users/users.service';
 import { TokenPayload } from '../auth.service';
 
 @Injectable()
@@ -13,10 +13,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private readonly usersService: UsersService,
   ) {
-    console.log('heree === JwtStrategy');
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request) => {
+        (request: Request) => {
           return request?.cookies?.Authentication;
         },
       ]),
@@ -24,8 +23,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: TokenPayload) {
-    console.log(`payload: ${payload}`);
+  async validate(payload: TokenPayload): Promise<UserResponse> {
     return this.usersService.getUserById(payload.userId);
   }
 }

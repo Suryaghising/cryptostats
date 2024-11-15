@@ -1,29 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { User } from './models/user';
+import { Model } from 'mongoose';
+import { User } from './models/User';
 
 @Injectable()
-export class UserRepository {
+export class UsersRepository {
   constructor(
     @InjectModel(User.name)
     private readonly user: Model<User>,
   ) {}
 
-  async insertOne(data: Partial<User>) {
+  async insertOne(data: Partial<User>): Promise<User> {
     const user = new this.user(data);
     return user.save();
   }
 
-  async findOneByEmail(email: string) {
+  async updateOne(userId: string, data: Partial<User>): Promise<User> {
+    return this.user.findByIdAndUpdate(userId, data, { new: true });
+  }
+
+  async findOneByEmail(email: string): Promise<User> {
     return this.user.findOne({ email });
   }
 
-  findOneById(userId: string) {
-    return this.user.findById({ userId });
-  }
-
-  updateOne(userId: string, data: Partial<User>) {
-    return this.user.findByIdAndUpdate(userId, data, { new: true });
+  async findOneById(userId: string): Promise<User> {
+    return this.user.findById(userId);
   }
 }

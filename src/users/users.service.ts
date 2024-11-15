@@ -4,87 +4,85 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateUserRequest } from './dtos/request/create-user-request.dto';
-import { UserRepository } from './users.repository';
-import { User } from './models/user';
 import { hash, compare } from 'bcrypt';
+import { CreateUserRequest } from './dto/request/create-user-request.dto';
+import { UserResponse } from './dto/response/user-response.dto';
+import { CoinbaseAuth } from './models/CoinbaseAuth';
+import { User } from './models/User';
+import { UsersRepository } from './users.repository';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly userRepository: UserRepository) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
-  async createUser(createUserRequest: CreateUserRequest) {
-    this.validateCreateUserRequest(createUserRequest);
-    const user = await this.userRepository.insertOne({
+  async createUser(
+    createUserRequest: CreateUserRequest,
+  ): Promise<UserResponse> {
+    await this.validateCreateUserRequest(createUserRequest);
+    const user = await this.usersRepository.insertOne({
       ...createUserRequest,
       password: await hash(createUserRequest.password, 10),
     });
     return this.buildResponse(user);
   }
 
+  async updateUser(userId: string, data: Partial<User>): Promise<UserResponse> {
+    const user = await this.usersRepository.updateOne(userId, data);
+    if (!user) {
+      throw new NotFoundException(`User not found by _id: '${userId}'.`);
+    }
+    return this.buildResponse(user);
+  }
+
   private async validateCreateUserRequest(
     createUserRequest: CreateUserRequest,
-  ) {
-    const user = await this.userRepository.findOneByEmail(
+  ): Promise<void> {
+    const user = await this.usersRepository.findOneByEmail(
       createUserRequest.email,
     );
     if (user) {
-      throw new BadRequestException('This email already exists');
+      throw new BadRequestException('This email already exists.');
     }
   }
 
-  async updateUser(userId: string, data: Partial<User>) {
-    const user = await this.userRepository.updateOne(userId, data);
+  async validateUser(email: string, password: string): Promise<UserResponse> {
+    const user = await this.usersRepository.findOneByEmail(email);
     if (!user) {
-      throw new NotFoundException('User does not exit');
+      throw new NotFoundException(`User does not exist by email: '${email}'.`);
     }
-    return this.buildResponse(user);
-  }
-
-  async validateUser(email: string, password: string) {
-    console.log(`email: ${email}, password: ${password}`);
-    const user = await this.userRepository.findOneByEmail(email);
-    if (!user) {
-      throw new BadRequestException('User does not exit');
-    }
-
     const passwordIsValid = await compare(password, user.password);
     if (!passwordIsValid) {
-      throw new UnauthorizedException('Password is wrong.');
+      throw new UnauthorizedException('Credentials are invalid');
     }
-
     return this.buildResponse(user);
   }
 
-  async getUserById(userId: string) {
-    console.log(`userid=== ${userId}`);
-    const user = await this.userRepository.findOneById(userId);
+  async getUserById(userId: string): Promise<UserResponse> {
+    const user = await this.usersRepository.findOneById(userId);
     if (!user) {
-      throw new NotFoundException('User does not exit');
+      throw new NotFoundException(`User not found by _id: '${userId}'.`);
     }
-
     return this.buildResponse(user);
   }
 
-
-  async getCoinbaseAuth(userId: string) {
-    const user = await this.userRepository.findOneById(userId);
+  async getCoinbaseAuth(userId: string): Promise<CoinbaseAuth> {
+    const user = await this.usersRepository.findOneById(userId);
     if (!user) {
-      throw new NotFoundException('User does not exit');
+      throw new NotFoundException(`User not found by _id: '${userId}'.`);
     }
-
-    if(!user.coinbaseAuth) {
-      throw new UnauthorizedException('User does not have coinbaseAuth');
+    if (!user.coinbaseAuth) {
+      throw new UnauthorizedException(
+        `User with _id: '${userId}' has not authorized Coinbase.`,
+      );
     }
-
     return user.coinbaseAuth;
   }
 
-  private buildResponse(user: User) {
+  private buildResponse(user: User): UserResponse {
     return {
-      _id: user._id,
+      _id: user._id.toString(),
       email: user.email,
-      iscCoinbaseAuthorized: !!user.coinbaseAuth,
+      isCoinbaseAuthorized: !!user.coinbaseAuth,
     };
   }
 }

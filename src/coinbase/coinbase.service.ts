@@ -10,38 +10,46 @@ export class CoinbaseService {
     private readonly coinbaseAuthService: CoinbaseAuthService,
   ) {}
 
-  async getPrimaryAccountTransactions(userId: string) {
+  async getPrimaryAccountTransactions(userId: string): Promise<any> {
     const primaryAccount = await this.getPrimaryAccount(userId);
     return this.getAccountTransactions(primaryAccount.id, userId);
   }
 
-  private async getPrimaryAccount(userId: string) {
+  private async getPrimaryAccount(userId: string): Promise<any> {
     try {
-      const response$ = await this.httpService.get(
-        `https://api.coinbase.com/v2/accounts`,
+      const response$ = this.httpService.get(
+        'https://api.coinbase.com/v2/accounts',
         {
           headers: await this.getHeaders(userId),
         },
       );
       const response = await lastValueFrom(response$);
-      return response.data.data.find((account) => account.primary);
-    } catch (error) {
-      throw error.response.data;
+      return response.data.data.find(account => account.primary);
+    } catch (err) {
+      throw err.response.data;
     }
   }
 
   private async getAccountTransactions(accountId: string, userId: string) {
-    const response$ = await this.httpService.get(
-      `https://api.coinbase.com/v2/accounts/${accountId}/transactions`,
-      {
-        headers: await this.getHeaders(userId),
-      },
-    );
+    try {
+      const response$ = this.httpService.get(
+        `https://api.coinbase.com/v2/accounts/${accountId}/transactions`,
+        {
+          headers: await this.getHeaders(userId),
+        },
+      );
+      const response = await lastValueFrom(response$);
+      return response.data;
+    } catch (err) {
+      throw err.response.data;
+    }
   }
 
   private async getHeaders(userId: string) {
     return {
-      Authorization: `Bearer ${await this.coinbaseAuthService.getAccessToken(userId)}`,
+      Authorization: `Bearer ${await this.coinbaseAuthService.getAccessToken(
+        userId,
+      )}`,
     };
   }
 }
